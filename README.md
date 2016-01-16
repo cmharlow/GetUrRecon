@@ -1,30 +1,30 @@
 #GetUrRecon == Get Your Recon[ciliation]
 
 ##Goal
-Build a library that, given a selected field in given a metadataset, can perform entity matching and matched related data retrieval from a set of library-focused external authority and other datasets. The ability to choose a match confidence range for auto-matching
+Build a library that, given a selected field in given a metadataset, can perform entity matching and matched related data retrieval from a set of library-focused external authority and other datasets. The ability to choose a match confidence range for auto-matching as well as a method for bringing in matched related data labels or URIs into the original metadata set is in scope.
 
 ##Overview
 This is the proposed game plan for this library:
 
 1. Metadata is file stored locally or a graph available via SPARQL endpoint with supplied pattern
 2. For library to work, designate:
-  a. the Metadata File or SPARQL endpoint with Resource Graph Pattern
-  b. the Row, Record or Graph definer/boundary for the resource metadata (through element name? xpath? depends on metadata format)
-  c. the Column, Field or Property pointing to the datapoint to be matched
-  d. if the datapoint is URI or literal
-  e. the matching type (PersonalName, CorporateName, Name, Topic, GeographicName, GenreForm, Title)
-  f. the matching confidence level (for determining automated matching)
+  * the Metadata File or SPARQL endpoint with Resource Graph Pattern
+  * the Row, Record or Graph definer/boundary for the resource metadata (through element name? xpath? depends on metadata format)
+  * the Column, Field or Property pointing to the datapoint to be matched
+  * if the datapoint is URI or literal
+  * the matching type (PersonalName, CorporateName, Name, Topic, GeographicName, GenreForm, Title)
+  * the matching confidence level (for determining automated matching)
 3. Library generates a "recon object" which is json containing:
-  a. the literal or URI to be matched
-  b. other information from the graph or record for the chosen matching type as available (see below)
-  c. a record identifier or graph URI
-  d. the matching confidence level
+  * the literal or URI to be matched
+  * other information from the graph or record for the chosen matching type as available (see below)
+  * a record identifier or graph URI
+  * the matching confidence level
 4. The "recon object" is expanded according to:
-  a. calls made to external authorities currently supported, using either direct calls to APIs or sameAs relationships between external databases for those that support/contain them
-  b. the top 3 matches from each external authority supported are evaluated using the matching types are evaluated
-  c. a score for each is created, and the match with the highest score is added to the recon object
-  d. the match's URI or identifier and preferred label are returned with the score
-  e. the match's sameAs URIs if available from the external vocabulary
+  * calls made to external authorities currently supported, using either direct calls to APIs or sameAs relationships between external databases for those that support/contain them
+  * the top 3 matches from each external authority supported are evaluated using the matching types are evaluated
+  * a score for each is created, and the match with the highest score is added to the recon object
+  * the match's URI or identifier and preferred label are returned with the score
+  * the match's sameAs URIs if available from the external vocabulary
 5. Have the user select a chosen recon service to use for then adding or overwriting the selected match label or URI to the original metadata file.
 
 ##Metadata Formats and Fields
