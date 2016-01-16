@@ -1,7 +1,7 @@
 #GetUrRecon == Get Your Recon[ciliation]
 
 ##Goal
-Build a library that, given a selected field in given a metadataset, can perform entity matching and matched related data retrieval from a set of library-focused external authority and other datasets. The ability to choose a match confidence range for auto-matching as well as a method for bringing in matched related data labels or URIs into the original metadata set is in scope.
+Build a library that, given a selected field in a given metadataset, can perform entity matching and related data retrieval from a set of library-focused authority and external datasets. The ability to choose a match confidence range for auto-matching as well as a method for bringing in matched related data labels or URIs into the original metadata set is in scope.
 
 ##Breaking out the Use Cases
 
