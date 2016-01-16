@@ -3,6 +3,20 @@
 ##Goal
 Build a library that, given a selected field in given a metadataset, can perform entity matching and matched related data retrieval from a set of library-focused external authority and other datasets. The ability to choose a match confidence range for auto-matching as well as a method for bringing in matched related data labels or URIs into the original metadata set is in scope.
 
+##Breaking out the Use Cases
+
+###Reconciliation (Things to Things)
+Given a URI in the descriptive metadata, bibliographic record, or RDF graph, this should find possible other URIs from external vocabularies, authorities or datasets and return that URI and preferred label. That external match is given a score, and if the score is in or above the decided match range, it should be put back in the originating metadataset. If below, the "recon objects" can be stored for later, human review and decision.
+
+###Entity Resolution (Strings to Things)
+Given a literal/string in the descriptive metadata, bibliographic record, or RDF graph, this should find possible URIs from external vocabularies, authorities or datasets and return that URI and the preferred label. The external match is given a score, and if the score is in or above the decided match range, it should be put back in the originating metadataset. If below, the "recon objects" can be stored for later, human review and decision.
+
+###Lexicalization (Things to Strings)
+Given an URI in the descriptive metadata, bibliographic record, or RDF graph, this should return possible matches with URIs and labels. The external matches are given scores, as proposed above. With that matching URI, it should be possible to retrieve other pref or alt labels as wanted.
+
+###Metadata Normalization
+Both of the above require normalization of the metadata pre and post review. This is often heavily dependent on work required outside of using this library. However, some common normalization routines that improve matching might be made into functions.
+
 ##Overview
 This is the proposed game plan for this library:
 
@@ -148,3 +162,11 @@ These should not be conflated with item types, which are usually a much smaller 
 
 ###Title
 To be explored. Could be considered frbr:work titles, uniform titles (though that usually conflates with frbr:work title), conference titles, or other.
+
+##Recon Objects
+Example of a "recon object" built out in this program:
+
+To be written.
+
+##Examples of Use
+To be written.
