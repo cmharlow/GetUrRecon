@@ -3,14 +3,20 @@ import requests
 from lxml import etree
 import constants
 import json
-#   1. record type assessment
+import pymarc
 
 
-class MARCmetadata:
+class MARC:
     """Base class for binary MARC21 record."""
-    def __init__(self, uri):
-        self.uri = uri
-        self.marcxml = etree.XML(requests.get(self.uri + ".marcxml.xml").text)
+    def __init__(self, args):
+        datafile = args.datafile
+        queryField = args.queryField
+
+    def matchField(self):
+        data = open(self.dataFile, 'rb')
+        reader = pymarc.MARCReader(data)
+        for record in reader:
+            print(record[self.queryField]['a'])
 
 
 class XMLmetadata:
@@ -23,6 +29,8 @@ class JSONmetadata:
 
 class RDFmetadata:
     """Base class for RDF graph."""
+
+#   1. record type assessment
 #   2. record feed import
 #   3. field parsing
 #   4. recon obj prelim creation with fields, query
@@ -31,7 +39,7 @@ class RDFmetadata:
 #   7. update records
 
 
-def main():
+if __name__ == "__main__":
     parser = ArgumentParser(usage='%(prog)s [options] data_filename')
     parser.add_argument("-f", "--format", dest="format",
                         help="Enter 1: csv, json, jsonld, mrc, nt, ttl, xml")
@@ -50,20 +58,22 @@ def main():
     parser.add_argument("datafile", help="metadata file to be matched")
 
     args = parser.parse_args()
+    print(args.datafile)
 
-    if args.datafile is not None and args.queryType == 'PersonalName':
+    if args.datafile and args.queryType == 'PersonalName':
         if args.format == 'csv':
             print('csv')
         elif args.format == 'json':
-            for i in json.load(args.datafile)[args.record]:
-                r = JSONRecord(json.load(args.datafile)[args.record])
-                if json.load(args.datafile)[args.record][i] == args.queryField:
-                    reso = r.buildReso()
-                    #external calls
+            print('json')
         elif args.format == 'jsonld':
             print('jsonld')
         elif args.format == 'mrc':
-            print('mrc')
+            with open(args.dataFile) as data:
+                reader = pymarc.MARCReader(data, to_unicode=True, force_utf8=True)
+                for record in reader:
+                    rec = MARC(record, args)
+                    recordID = rec['001']
+                    print(recordID)
         elif args.format == 'nt':
             print('nt')
         elif args.format == 'ttl':
@@ -75,11 +85,3 @@ def main():
                     for entity in elem.iter(args.queryField):
                         reso = r.buildReso()
                         #external calls
-
-    if args.sparql is not None and args.uri is not None:
-        #retrieve graph for uri from sparql endpoint
-        #
-
-
-if __name__ == "__main__":
-    main()
