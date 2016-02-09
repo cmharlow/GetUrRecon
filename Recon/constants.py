@@ -18,11 +18,11 @@ lcsh_re = re.compile('sh\d+')
 
 #search base URLs
 wikidata_sparql = "https://query.wikidata.org/sparql"
-lcnaf_suggest = "http://id.loc.gov/names/suggest/?q="
-lcsh_suggest = "http://id.loc.gov/subjects/suggest/?q="
-lc_suggest = "http://id.loc.gov/suggest/?q="
-lcnaf_didyoumean = "http://id.loc.gov/names/didyoumean/?label="
-lcsh_didyoumean = "http://id.loc.gov/subjects/didyoumean/?label="
+lcnaf_suggest = "http://id.loc.gov/authorities/names/suggest/?q="
+lcsh_suggest = "http://id.loc.gov/authorities/subjects/suggest/?q="
+lc_suggest = "http://id.loc.gov/authorities/suggest/?q="
+lcnaf_didyoumean = "http://id.loc.gov/authorities/names/didyoumean/?label="
+lcsh_didyoumean = "http://id.loc.gov/authorities/subjects/didyoumean/?label="
 
 #URI base URLs
 naf_base = "http://id.loc.gov/authorities/names/"

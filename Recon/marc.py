@@ -4,8 +4,7 @@ import logging
 import re
 import sys
 import constants
-import normalize
-from SPARQLWrapper import SPARQLWrapper, JSON
+import querying
 import requests
 import urllib
 
@@ -128,124 +127,14 @@ def main():
                                 lcnaf_uri = constants.naf_base + lcnaf
                                 lc_score = 100
                                 #Ask WikiData if there is match for that NAF
-                                sparql = SPARQLWrapper(constants.wikidata_sparql)
-                                sparql.setQuery("""
-                                    PREFIX wikibase: <http://wikiba.se/ontology#>
-                                    PREFIX wd: <http://www.wikidata.org/entity/>
-                                    PREFIX wdt: <http://www.wikidata.org/prop/direct/>
-                                    PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-                                    SELECT ?uri ?ulan ?viaf ?fast ?prefLabel WHERE {
-                                        ?uri wdt:P244 '""" + lcnaf + """' .
-                                        ?uri wdt:P245 ?ulan .
-                                        ?uri wdt:P214 ?viaf .
-                                        ?uri wdt:P2163 ?fast .
-                                        SERVICE wikibase:label {
-                                        bd:serviceParam wikibase:language "en" .
-                                        ?uri rdfs:label ?prefLabel .
-                                        }
-                                    }
-                                """)
-                                sparql.setReturnFormat(JSON)
-                                res = sparql.query().convert()
-                                #If there is WikiData match:
-                                if res['results']['bindings'][0]['uri']['value']:
-                                    wikidata_uri = (res['results']['bindings']
-                                                    [0]['uri']['value'])
-                                    wikidata_prefLabel = (res['results']
-                                                          ['bindings'][0]
-                                                          ['prefLabel']['value'])
-                                    wikidata_score = 100
-                                    try:
-                                        ulan_uri = (constants.ulan_base +
-                                                    (res['results']['bindings']
-                                                     [0]['ulan']['value']))
-                                        getty_score = 100
-                                    except:
-                                        ulan_uri = None
-                                    try:
-                                        viaf_uri = (constants.viaf_base +
-                                                    (res['results']['bindings']
-                                                     [0]['viaf']['value']))
-                                        viaf_score = 100
-                                    except:
-                                        viaf_uri = None
-                                    try:
-                                        fast_uri = (constants.fast_base +
-                                                    (res['results']['bindings']
-                                                     [0]['fast']['value']))
-                                        fast_score = 100
-                                    except:
-                                        fast_uri = None
-                                #If no Wikidata Match for ID, leave as none for
-                                #now. Will eventually have this do reg search
-                                else:
-                                    wikidata_uri = None
-                                    wikidata_prefLabel = None
-                                    ulan_uri = None
-                                    viaf_uri = None
-                                    fast_uri = None
+                                querying.sparqlLCid(lcnaf)
                             #FAST-flavored identifiers parsed, searched
                             elif re.match(constants.fast_re, field_id):
                                 fast = name['0'].value
                                 fast_uri = constants.fast_base + fast
                                 fast_score = 100
                                 #Ask WikiData if there is match for that FAST
-                                sparql = SPARQLWrapper(constants.wikidata_sparql)
-                                sparql.setQuery("""
-                                    PREFIX wikibase: <http://wikiba.se/ontology#>
-                                    PREFIX wd: <http://www.wikidata.org/entity/>
-                                    PREFIX wdt: <http://www.wikidata.org/prop/direct/>
-                                    PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-                                    SELECT ?uri ?ulan ?viaf ?naf ?prefLabel WHERE {
-                                        ?uri wdt:P2163 '""" + fast + """' .
-                                        ?uri wdt:P245 ?ulan .
-                                        ?uri wdt:P214 ?viaf .
-                                        ?uri wdt:P244 ?naf .
-                                        SERVICE wikibase:label {
-                                        bd:serviceParam wikibase:language "en" .
-                                        ?uri rdfs:label ?prefLabel .
-                                        }
-                                    }
-                                """)
-                                sparql.setReturnFormat(JSON)
-                                res = sparql.query().convert()
-                                #If there is WikiData match:
-                                if res['results']['bindings'][0]['uri']['value']:
-                                    wikidata_uri = (res['results']['bindings']
-                                                    [0]['uri']['value'])
-                                    wikidata_prefLabel = (res['results']
-                                                          ['bindings'][0]
-                                                          ['prefLabel']['value'])
-                                    wikidata_score = 100
-                                    try:
-                                        ulan_uri = (constants.ulan_base +
-                                                    (res['results']['bindings']
-                                                     [0]['ulan']['value']))
-                                        getty_score = 100
-                                    except:
-                                        ulan_uri = None
-                                    try:
-                                        viaf_uri = (constants.viaf_base +
-                                                    (res['results']['bindings']
-                                                     [0]['viaf']['value']))
-                                        viaf_score = 100
-                                    except:
-                                        viaf_uri = None
-                                    try:
-                                        lcnaf_uri = (constants.naf_base +
-                                                    (res['results']['bindings']
-                                                     [0]['naf']['value']))
-                                        lc_score = 100
-                                    except:
-                                        lcnaf_uri = None
-                                #If no Wikidata Match for ID, leave as none for
-                                #now. Will eventually have this do reg search
-                                else:
-                                    wikidata_uri = None
-                                    wikidata_prefLabel = None
-                                    ulan_uri = None
-                                    viaf_uri = None
-                                    lcnaf_uri = None
+                                querying.sparqlFASTid(fast)
                             #Put results into Recon Resp JSON for $0 entries
                             wikidata0 = [wikidata_uri, wikidata_prefLabel, wikidata_score]
                             results[id_label]['matches']['wikidata'] = {wikidata0}
@@ -263,79 +152,27 @@ def main():
                         elif name['d'] or name['q'] or name['b'] or name['c']:
                             results[id_label]['field_id'] = None
                             #Look for NAF Identifier first
-                            out = []
-                            query = normalize.name_alone(name)
-                            url = (constants.lcnaf_suggest +
-                                  urllib.parse.quote(query.encode('utf8')))
-                            resp = requests.get(url)
-                            results = resp.json()
-                            #Ask WikiData if there is match for that NAF
-                            sparql = SPARQLWrapper(constants.wikidata_sparql)
-                            sparql.setQuery("""
-                                PREFIX wikibase: <http://wikiba.se/ontology#>
-                                PREFIX wd: <http://www.wikidata.org/entity/>
-                                PREFIX wdt: <http://www.wikidata.org/prop/direct/>
-                                PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-                                SELECT ?uri ?ulan ?viaf ?fast ?prefLabel WHERE {
-                                    ?uri wdt:P244 '""" + lcnaf + """' .
-                                    ?uri wdt:P245 ?ulan .
-                                    ?uri wdt:P214 ?viaf .
-                                    ?uri wdt:P2163 ?fast .
-                                    SERVICE wikibase:label {
-                                    bd:serviceParam wikibase:language "en" .
-                                    ?uri rdfs:label ?prefLabel .
-                                    }
-                                }
-                            """)
-                            sparql.setReturnFormat(JSON)
-                            res = sparql.query().convert()
-                            #If there is WikiData match:
-                            if res['results']['bindings'][0]['uri']['value']:
-                                wikidata_uri = (res['results']['bindings']
-                                                [0]['uri']['value'])
-                                wikidata_prefLabel = (res['results']
-                                                      ['bindings'][0]
-                                                      ['prefLabel']['value'])
-                                wikidata_score = 100
-                                try:
-                                    ulan_uri = (constants.ulan_base +
-                                                (res['results']['bindings']
-                                                 [0]['ulan']['value']))
-                                    getty_score = 100
-                                except:
-                                    ulan_uri = None
-                                try:
-                                    viaf_uri = (constants.viaf_base +
-                                                (res['results']['bindings']
-                                                 [0]['viaf']['value']))
-                                    viaf_score = 100
-                                except:
-                                    viaf_uri = None
-                                try:
-                                    fast_uri = (constants.fast_base +
-                                                (res['results']['bindings']
-                                                 [0]['fast']['value']))
-                                    fast_score = 100
-                                except:
-                                    fast_uri = None
-                            #If no Wikidata Match for ID, leave as none for
-                            #now. Will eventually have this do reg search
+                            label_4 = query.replace(str(name['4']), '').strip()
+                            label_e = label_4.replace(str(name['e']), '').strip()
+                            label_fin = label_e.strip('.').strip(',')
+                            lc_url = (constants.lcnaf_suggest +
+                                      urllib.parse.quote(label_fin
+                                                         .encode('utf8')))
+                            print(lc_url)
+                            lc_resp = requests.get(lc_url)
+                            lc_results = lc_resp.json()
+                            if lc_results[1][0]:
+                                lc_prefLabel = lc_results[1][0]
+                                lc_uri = lc_results[3][0]
+                                lcnaf = lc_uri.replace(constants.naf_base, '')
+                                #Ask WikiData if there is match for that NAF
+                                querying.sparqlLCid(lcnaf)
                             else:
-                                wikidata_uri = None
-                                wikidata_prefLabel = None
-                                ulan_uri = None
-                                viaf_uri = None
-                                fast_uri = None
-                            else:
-                                wikidata_uri = None
-                                wikidata_prefLabel = None
-                                ulan_uri = None
-                                viaf_uri = None
-                                lcnaf_uri = None
-                            #Put results into Recon Resp JSON for $0 entries
+                                #do further matching
+                                pass
                             wikidata0 = [wikidata_uri, wikidata_prefLabel, wikidata_score]
                             results[id_label]['matches']['wikidata'] = {wikidata0}
-                            lc0 = [lcnaf_uri, lc_score]
+                            lc0 = [lcnaf_uri, lc_score, lc_prefLabel]
                             results[id_label]['matches']['lc'] = {lc0}
                             getty0 = [ulan_uri, getty_score]
                             results[id_label]['matches']['getty'] = {getty0}

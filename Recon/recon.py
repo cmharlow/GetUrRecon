@@ -6,29 +6,20 @@ import json
 import pymarc
 
 
-class MARC:
-    """Base class for binary MARC21 record."""
-    def __init__(self, args):
-        datafile = args.datafile
-        queryField = args.queryField
+class Recon(object):
+    """ Recon object base class """
+    def __init__(self, id_label, obj={}):
+        self.id_label = id_label
+        self.obj = obj
+        obj['record_id'] = 'record_id'
+        obj['matches'] = 'matches'
 
-    def matchField(self):
-        data = open(self.dataFile, 'rb')
-        reader = pymarc.MARCReader(data)
-        for record in reader:
-            print(record[self.queryField]['a'])
+    def addField(self, field, value):
+        self.obj[field] = value
 
+    def addMatch(self, matchSource, matchList):
+        self.obj
 
-class XMLmetadata:
-    """Base class for XML record."""
-
-
-class JSONmetadata:
-    """Base class for JSON (not LD) record."""
-
-
-class RDFmetadata:
-    """Base class for RDF graph."""
 
 #   1. record type assessment
 #   2. record feed import
