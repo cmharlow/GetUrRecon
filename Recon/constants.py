@@ -13,7 +13,7 @@ MARCXML = '{%(marcxml)s}' % ns
 
 #identifier patterns
 naf_re = re.compile('n\d+')
-fast_re = re.compile('fst\d{8}')
+fast_re = re.compile('fst\d+')
 lcsh_re = re.compile('sh\d+')
 
 #search base URLs

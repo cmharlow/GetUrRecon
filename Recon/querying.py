@@ -1,5 +1,54 @@
 from SPARQLWrapper import SPARQLWrapper, JSON
 import constants
+import urllib
+import rdflib
+import requests
+
+
+def getLCprefLabel(lcuri):
+    try:
+        graph = rdflib.Graph().parse(lcuri + ".skos.nt", format='nt')
+    except urllib.error.HTTPError:
+        loc_preflabel = None
+    loc_labeltriple = graph.preferredLabel(rdflib.URIRef(lcuri), lang='en')
+    loc_preflabel = loc_labeltriple[0][1].toPython()
+    return loc_preflabel
+
+
+def getFASTprefLabel(fasturi):
+    try:
+        graph = rdflib.Graph().parse(fasturi + "/rdf", format='xml')
+        fast_labeltriple = graph.preferredLabel(rdflib.URIRef(fasturi))
+        fast_preflabel = fast_labeltriple[0][1].toPython()
+        return fast_preflabel
+    except urllib.error.HTTPError:
+        fast_preflabel = None
+        return(fast_preflabel)
+        pass
+
+
+def LCsuggest(query, role_code, role):
+    out = {}
+    label_int = query.replace(str(role_code), '').strip().replace(str(role), '').strip()
+    label = label_int.strip('.').strip(',').encode('utf8')
+    lc_url = (constants.lcnaf_suggest + urllib.parse.quote(label))
+    lc_resp = requests.get(lc_url)
+    lc_results = lc_resp.json()
+    if len(lc_results[1]) > 0:
+        lc_prefLabel = lc_results[1][0]
+        lc_uri = lc_results[3][0]
+        lcnaf = lc_uri.replace(constants.naf_base, '')
+        #Ask WikiData if there is match for that NAF
+        sparqlLCid(lcnaf)
+    else:
+        #do further matching
+        lc_prefLabel = None
+        lc_uri = None
+        lcnaf = None
+    out['lc_prefLabel'] = lc_prefLabel
+    out['lc_uri'] = lc_uri
+    out['lcnaf'] = lcnaf
+    return(out)
 
 
 def sparqlLCid(LCid):
@@ -22,6 +71,7 @@ def sparqlLCid(LCid):
     """)
     sparql.setReturnFormat(JSON)
     res = sparql.query().convert()
+    out = {}
     #If there is WikiData match:
     if len(res['results']['bindings']) > 0:
         wikidata_uri = (res['results']['bindings'][0]['uri']['value'])
@@ -48,8 +98,19 @@ def sparqlLCid(LCid):
             fast_uri = None
     else:
         wikidata_uri = wikidata_prefLabel = wikidata_score = ulan_uri = getty_score = viaf_uri = viaf_score = fast_uri = fast_score = None
-    return(wikidata_uri, wikidata_prefLabel, wikidata_score, ulan_uri,
-           getty_score, viaf_uri, viaf_score, fast_uri, fast_score)
+    out['wikidata_uri'] = wikidata_uri
+    out['wikidata_prefLabel'] = wikidata_prefLabel
+    out['wikidata_score'] = wikidata_score
+    out['ulan_uri'] = ulan_uri
+    out['ulan_prefLabel'] = None
+    out['getty_score'] = getty_score
+    out['viaf_uri'] = viaf_uri
+    out['viaf_score'] = viaf_score
+    out['viaf_prefLabel'] = None
+    out['fast_uri'] = fast_uri
+    out['fast_score'] = fast_score
+    out['fast_prefLabel'] = None
+    return out
 
 
 def sparqlFASTid(FASTid):

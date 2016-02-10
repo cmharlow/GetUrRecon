@@ -5,10 +5,62 @@ import re
 import sys
 import constants
 import querying
-import requests
-import urllib
 
 logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+
+
+def handle0(subfield0, matches):
+    #NAF-flavored identifiers parsed, searched
+    if re.match(constants.naf_re, subfield0):
+        lcnaf = subfield0
+        lcnaf_uri = constants.naf_base + lcnaf
+        lc_prefLabel = querying.getLCprefLabel(lcnaf_uri)
+        lc_score = 100
+        #Ask WikiData if there is match for that NAF
+        LCqueryout = querying.sparqlLCid(lcnaf)
+        wikidata0 = ({'wikidata_uri': LCqueryout['wikidata_uri'],
+                     'wikidata_prefLabel': LCqueryout['wikidata_prefLabel'],
+                     'wikidata_score': LCqueryout['wikidata_score']})
+        lc0 = ({'lcnaf_uri': lcnaf_uri, 'lc_prefLabel': lc_prefLabel,
+               'lc_score': lc_score})
+        getty0 = ({'ulan_uri': LCqueryout['ulan_uri'],
+                  'ulan_prefLabel': LCqueryout['ulan_prefLabel'],
+                  'getty_score': LCqueryout['getty_score']})
+        fast0 = ({'fast_uri': LCqueryout['fast_uri'],
+                  'fast_prefLabel': LCqueryout['fast_prefLabel'],
+                  'fast_score': LCqueryout['fast_score']})
+        viaf0 = ({'viaf_uri': LCqueryout['viaf_uri'],
+                  'viaf_prefLabel': LCqueryout['viaf_prefLabel'],
+                  'viaf_score': LCqueryout['viaf_score']})
+    #FAST-flavored identifiers parsed, searched
+    elif re.match(constants.fast_re, subfield0):
+        fast = subfield0
+        fast_uri = constants.fast_base + fast.replace('fst', '')
+        fast_prefLabel = querying.getFASTprefLabel(fast_uri)
+        fast_score = 100
+        #Ask WikiData if there is match for that FAST
+        FASTqueryout = querying.sparqlFASTid(fast)
+        wikidata0 = ({'wikidata_uri': FASTqueryout['wikidata_uri'],
+                     'wikidata_prefLabel': FASTqueryout['wikidata_prefLabel'],
+                     'wikidata_score': FASTqueryout['wikidata_score']})
+        lc0 = ({'lcnaf_uri': lcnaf_uri, 'lc_prefLabel': lc_prefLabel,
+               'lc_score': lc_score})
+        getty0 = ({'ulan_uri': FASTqueryout['ulan_uri'],
+                  'ulan_prefLabel': FASTqueryout['ulan_prefLabel'],
+                  'getty_score': FASTqueryout['getty_score']})
+        fast0 = ({'fast_uri': fast_uri,
+                  'fast_prefLabel': fast_prefLabel,
+                  'fast_score': fast_score})
+        viaf0 = ({'viaf_uri': FASTqueryout['viaf_uri'],
+                  'viaf_prefLabel': FASTqueryout['viaf_prefLabel'],
+                  'viaf_score': FASTqueryout['viaf_score']})
+    matches['lc'] = [lc0]
+    matches['wikidata'] = [wikidata0]
+    matches['viaf'] = [viaf0]
+    matches['getty'] = [getty0]
+    matches['fast'] = [fast0]
+    return(matches)
+    logging.debug(matches)
 
 
 def main():
@@ -38,46 +90,34 @@ def main():
             reader = pymarc.MARCReader(data)
             #Records - MARC
             for record in reader:
-                #Generate Recon Resp that is static for all hdgs in this record
-                #ID
                 recordID = record['001'].data
-                #Title
                 try:
                     title = record['245']['a'].replace(' /', '')
                 except TypeError:
                     title = None
-                #Uniform Title
                 try:
                     uniformTitle = record['240']['a']
                 except TypeError:
                     uniformTitle = None
-                #Statement of Responsibility - 2nd Affiliation?
                 try:
                     stmtOfResp = record['245']['c']
                 except TypeError:
                     stmtOfResp = None
-                #Topics
                 try:
                     topics = []
                     for topic in record.get_fields('650'):
                         topics.append(topic.format_field().replace(' -- ',
                                       '--'))
-                except (TypeError):
+                except TypeError:
                     topics = None
-                #Iterate through headings now - first 100
                 for name in record.get_fields('100'):
                     #If has something to not make a personal name, skip
-                    if name['t'] or name['v'] or name['x']:
-                        logging.debug('No matching for ' + name.format_field()
-                                      .replace(' -- ', '--'))
-                    #Otherwise, perform matching
-                    else:
-                        id_label = recordID + (name.format_field())
+                    if not name['t'] or not name['v'] or not name['x']:
                         query = name.format_field()
                         query_norm = name['a']
-                        if ", " in query_norm and name.indicator1 == 1:
-                            lastname = query.split(', ', 1)[0]
-                            firstname = query.split(', ', 1)[1]
+                        if "," in query_norm and name.indicator1 == '1':
+                            lastname = query_norm.split(', ', 1)[0]
+                            firstname = query_norm.split(', ', 1)[1]
                             query_inv = firstname + " " + lastname
                         else:
                             query_inv = None
@@ -101,88 +141,58 @@ def main():
                             affiliation = name['u']
                         except TypeError:
                             affiliation = None
+                        try:
+                            field_id = name['0']
+                        except TypeError:
+                            field_id = None
                         #start Recon Resp JSON construction
-                        results[id_label] = {}
-                        results[id_label]['recordID'] = recordID
-                        results[id_label]['title'] = title
-                        results[id_label]['uniformTitle'] = uniformTitle
-                        results[id_label]['stmtOfResp'] = stmtOfResp
-                        results[id_label]['topics'] = topics
-                        results[id_label]['query'] = query
-                        results[id_label]['query_norm'] = query_norm
-                        results[id_label]['bdate'] = bdate
-                        results[id_label]['ddate'] = ddate
-                        results[id_label]['role'] = role
-                        results[id_label]['role_code'] = role_code
-                        results[id_label]['affiliation'] = affiliation
-                        results[id_label]['matches'] = {}
+                        matches = {}
+                        matches['query'] = query
+                        matches['recordID'] = recordID
                         lc_score = getty_score = wikidata_score = viaf_score = fast_score = 0
                         #if the heading has an ID already, match on that first
-                        if name['0']:
-                            field_id = name['0']
-                            results[id_label]['field_id'] = field_id
-                            #NAF-flavored identifiers parsed, searched
-                            if re.match(constants.naf_re, field_id):
-                                lcnaf = name['0'].value
-                                lcnaf_uri = constants.naf_base + lcnaf
-                                lc_score = 100
-                                #Ask WikiData if there is match for that NAF
-                                querying.sparqlLCid(lcnaf)
-                            #FAST-flavored identifiers parsed, searched
-                            elif re.match(constants.fast_re, field_id):
-                                fast = name['0'].value
-                                fast_uri = constants.fast_base + fast
-                                fast_score = 100
-                                #Ask WikiData if there is match for that FAST
-                                querying.sparqlFASTid(fast)
-                            #Put results into Recon Resp JSON for $0 entries
-                            wikidata0 = [wikidata_uri, wikidata_prefLabel, wikidata_score]
-                            results[id_label]['matches']['wikidata'] = {wikidata0}
-                            lc0 = [lcnaf_uri, lc_score]
-                            results[id_label]['matches']['lc'] = {lc0}
-                            getty0 = [ulan_uri, getty_score]
-                            results[id_label]['matches']['getty'] = {getty0}
-                            viaf0 = [viaf_uri, viaf_score]
-                            results[id_label]['matches']['viaf'] = {viaf0}
-                            fast0 = [fast_uri, fast_score]
-                            results[id_label]['matches']['fast'] = {fast0}
-                            logging.debug(results)
+                        if field_id:
+                            results = handle0(field_id, results)
                         #If name does not have $0 but has $d, $q, $b, $c
                         #Then run against NAF first for id checking
                         elif name['d'] or name['q'] or name['b'] or name['c']:
-                            results[id_label]['field_id'] = None
                             #Look for NAF Identifier first
-                            label_4 = query.replace(str(name['4']), '').strip()
-                            label_e = label_4.replace(str(name['e']), '').strip()
-                            label_fin = label_e.strip('.').strip(',')
-                            lc_url = (constants.lcnaf_suggest +
-                                      urllib.parse.quote(label_fin
-                                                         .encode('utf8')))
-                            print(lc_url)
-                            lc_resp = requests.get(lc_url)
-                            lc_results = lc_resp.json()
-                            if lc_results[1][0]:
-                                lc_prefLabel = lc_results[1][0]
-                                lc_uri = lc_results[3][0]
-                                lcnaf = lc_uri.replace(constants.naf_base, '')
+                            lc_results = querying.LCsuggest(query, role_code,
+                                                            role)
+                            if lc_results['lc_uri']:
+                                #Consider a match?
+                                lc_uri = lc_results['lc_uri']
+                                lc_prefLabel = lc_results['lc_prefLabel']
+                                lcnaf = lc_results['lcnaf']
+                                lc_score = 80 #make better later according to
+                                #which subfield did matching
                                 #Ask WikiData if there is match for that NAF
-                                querying.sparqlLCid(lcnaf)
+                                LCqueryout = querying.sparqlLCid(lcnaf)
+                                wikidata0 = ({'wikidata_uri': LCqueryout['wikidata_uri'],
+                                             'wikidata_prefLabel': LCqueryout['wikidata_prefLabel'],
+                                             'wikidata_score': LCqueryout['wikidata_score']})
+                                lc0 = ({'lcnaf_uri': lc_uri, 'lc_prefLabel': lc_prefLabel,
+                                       'lc_score': lc_score})
+                                getty0 = ({'ulan_uri': LCqueryout['ulan_uri'],
+                                          'ulan_prefLabel': LCqueryout['ulan_prefLabel'],
+                                          'getty_score': LCqueryout['getty_score']})
+                                fast0 = ({'fast_uri': LCqueryout['fast_uri'],
+                                          'fast_prefLabel': LCqueryout['fast_prefLabel'],
+                                          'fast_score': LCqueryout['fast_score']})
+                                viaf0 = ({'viaf_uri': LCqueryout['viaf_uri'],
+                                          'viaf_prefLabel': LCqueryout['viaf_prefLabel'],
+                                          'viaf_score': LCqueryout['viaf_score']})
+                                matches['lc'] = [lc0]
+                                matches['wikidata'] = [wikidata0]
+                                matches['viaf'] = [viaf0]
+                                matches['getty'] = [getty0]
+                                matches['fast'] = [fast0]
+                                matches['INVERSION'] = query_inv
+                                results['matches'] = matches
+                                logging.debug(results)
                             else:
-                                #do further matching
                                 pass
-                            wikidata0 = [wikidata_uri, wikidata_prefLabel, wikidata_score]
-                            results[id_label]['matches']['wikidata'] = {wikidata0}
-                            lc0 = [lcnaf_uri, lc_score, lc_prefLabel]
-                            results[id_label]['matches']['lc'] = {lc0}
-                            getty0 = [ulan_uri, getty_score]
-                            results[id_label]['matches']['getty'] = {getty0}
-                            viaf0 = [viaf_uri, viaf_score]
-                            results[id_label]['matches']['viaf'] = {viaf0}
-                            fast0 = [fast_uri, fast_score]
-                            results[id_label]['matches']['fast'] = {fast0}
-                            logging.debug(results)
                         #If name does not have $0 but has $d, $q, $b, $c
-                        #Then run against NAF first for id checking
 
 
 

@@ -6,21 +6,6 @@ import json
 import pymarc
 
 
-class Recon(object):
-    """ Recon object base class """
-    def __init__(self, id_label, obj={}):
-        self.id_label = id_label
-        self.obj = obj
-        obj['record_id'] = 'record_id'
-        obj['matches'] = 'matches'
-
-    def addField(self, field, value):
-        self.obj[field] = value
-
-    def addMatch(self, matchSource, matchList):
-        self.obj
-
-
 #   1. record type assessment
 #   2. record feed import
 #   3. field parsing
