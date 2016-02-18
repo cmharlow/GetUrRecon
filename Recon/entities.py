@@ -1,3 +1,5 @@
+import constants
+import exceptions
 import requests
 import urllib
 from lxml import etree
@@ -5,35 +7,8 @@ import rdflib
 from SPARQLWrapper import SPARQLWrapper, JSON
 from fuzzywuzzy import fuzz
 import csv
-import os
 import re
 from argparse import ArgumentParser
-
-ns = {'mods': 'http://www.loc.gov/mods/v3',
-      'dc': 'http://purl.org/dc/elements/1.1/',
-      'oai': 'http://www.openarchives.org/OAI/2.0/',
-      'oai_dc': 'http://www.openarchives.org/OAI/2.0/oai_dc/',
-      'marcxml': 'http://www.loc.gov/MARC21/slim'}
-OAI = '{%(oai)s}' % ns
-DC = '{%(dc)s}' % ns
-OAI_DC = '{%(oai_dc)s}' % ns
-MARCXML = '{%(marcxml)s}' % ns
-
-wskey = os.environ['WSKEY']
-search_url = ("http://experiment.worldcat.org/entity/lookup/?wskey="
-              + wskey + "&q=")
-sameas_url = ("http://experiment.worldcat.org/entity/lookup/.jsonld?wskey="
-              + wskey + "&id=")
-json_header = {'Accept': 'application/ld+json'}
-
-
-class ReconException(Exception):
-    """Base exception class for this review"""
-    def __init__(self, value):
-        self.value = value
-
-    def __str__(self):
-        return "%s" % (self.value)
 
 
 class LoCRespMARCXML:
@@ -44,7 +19,7 @@ class LoCRespMARCXML:
 
     def get_loc_aff(self):
         affxp = '//marcxml:datafield[@tag="373"]/marcxml:subfield[@code="a"]'
-        loc_resp_373a = self.marcxml.xpath(affxp, namespaces=ns)
+        loc_resp_373a = self.marcxml.xpath(affxp, namespaces=constants.ns)
         out = []
         if loc_resp_373a is not None:
             for n in range(len(loc_resp_373a)):
@@ -57,11 +32,12 @@ class LoCRespMARCXML:
     def get_loc_bdate(self):
         rdaxp = '//marcxml:datafield[@tag="046"]/marcxml:subfield[@code="f"]'
         otherxp = '//marcxml:datafield[@tag="100"]/marcxml:subfield[@code="d"]'
-        loc_resp_046f = self.marcxml.xpath(rdaxp, namespaces=ns)
+        loc_resp_046f = self.marcxml.xpath(rdaxp, namespaces=constants.ns)
         if len(loc_resp_046f) > 0:
             return loc_resp_046f[0].text[:4]
         else:
-            loc_resp_100d = self.marcxml.xpath(otherxp, namespaces=ns)
+            loc_resp_100d = self.marcxml.xpath(otherxp,
+                                               namespaces=constants.ns)
             if len(loc_resp_100d) > 0:
                 return loc_resp_100d[0].text[:4]
             else:
@@ -70,11 +46,11 @@ class LoCRespMARCXML:
     def get_loc_ddate(self):
         rdaxp = '//marcxml:datafield[@tag="046"]/marcxml:subfield[@code="g"]'
         otherxp = '//marcxml:datafield[@tag="100"]/marcxml:subfield[@code="d"]'
-        loc_046g = self.marcxml.xpath(rdaxp, namespaces=ns)
+        loc_046g = self.marcxml.xpath(rdaxp, namespaces=constants.ns)
         if len(loc_046g) > 0:
             return loc_046g[0].text[:4]
         else:
-            loc_100d = self.marcxml.xpath(otherxp, namespaces=ns)
+            loc_100d = self.marcxml.xpath(otherxp, namespaces=constants.ns)
             if len(loc_100d) > 0 and re.match('^\d{4}-\d{4}$',
                                               loc_100d[0].text):
                 return loc_100d[0].text[-4:]
@@ -108,7 +84,7 @@ class VIAFrespMARCXML:
 
     def get_viaf_title(self):
         titlexp = '//marcxml:datafield[@tag="910"]/marcxml:subfield[@code="a"]'
-        viaf_resp_910a = self.viaf_mx.xpath(titlexp, namespaces=ns)
+        viaf_resp_910a = self.viaf_mx.xpath(titlexp, namespaces=constants.ns)
         if len(viaf_resp_910a) > 0:
             out = []
             for n in range(len(viaf_resp_910a)):
@@ -120,7 +96,7 @@ class VIAFrespMARCXML:
 
     def get_viaf_aff(self):
         affxp = '//marcxml:datafield[@tag="510"]/marcxml:subfield[@code="a"]'
-        viaf_resp_510a = self.viaf_mx.xpath(affxp, namespaces=ns)
+        viaf_resp_510a = self.viaf_mx.xpath(affxp, namespaces=constants.ns)
         if len(viaf_resp_510a) > 0:
             out = []
             for n in range(len(viaf_resp_510a)):
@@ -186,18 +162,19 @@ class OAIDCRecord:
     def get_record_id(self):
         try:
             record_id = self.elem.find("oai:header/oai:identifier",
-                                       namespaces=ns).text
+                                       namespaces=constants.ns).text
             return record_id
         except:
-            raise ReconException("Record does not have a Record Identifier")
+            raise exceptions.ReconException("Record does not have a Record \
+                                            Identifier")
 
     def get_record_status(self):
         return self.elem.find("oai:header",
-                              namespaces=ns).get("status", "active")
+                              namespaces=constants.ns).get("status", "active")
 
     def get_element(self, element):
         try:
-            element = self.elem[1][0].find(element, namespaces=ns)
+            element = self.elem[1][0].find(element, namespaces=constants.ns)
             if element.text:
                 return element.text.strip()
             else:
@@ -208,7 +185,8 @@ class OAIDCRecord:
     def get_elements(self, element):
         out = []
         try:
-            elements = self.elem[1][0].findall(element, namespaces=ns)
+            elements = self.elem[1][0].findall(element,
+                                               namespaces=constants.ns)
             for element in elements:
                 if element.text:
                     out.append(element.text.strip())
@@ -302,7 +280,7 @@ def main():
                     "OCLC_result2_Wiki_affiliation_CUL_score"])
 
     for event, elem in etree.iterparse(args.datafile):
-        if elem.tag == OAI + "record":
+        if elem.tag == constants.OAI + "record":
             r = OAIDCRecord(elem)
             record_id = r.get_record_id()
             title = r.get_element('dc:title')
