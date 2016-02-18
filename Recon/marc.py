@@ -55,7 +55,7 @@ def handle0(subfield0):
 
 
 def processMarc(datafile, args, fields):
-    response = []
+    response = {}
     fields = fields
     reader = pymarc.MARCReader(open(datafile, 'rb'))
     for record in reader:
@@ -199,6 +199,6 @@ def processMarc(datafile, args, fields):
                             resp['matches']['viaf'] = WDqueryout['viaf']
                             resp['matches']['fast'] = WDqueryout['fast']
                             resp['matches']['getty'] = WDqueryout['getty']
-                response.append(resp)
-    print(response)
+                response[recordID + '_' + query_norm] = resp
+    return(response)
                 #If name does not have $0 but has $d, $q, $b, $c
