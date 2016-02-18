@@ -23,6 +23,7 @@ lcsh_suggest = "http://id.loc.gov/authorities/subjects/suggest/?q="
 lc_suggest = "http://id.loc.gov/authorities/suggest/?q="
 lcnaf_didyoumean = "http://id.loc.gov/authorities/names/didyoumean/?label="
 lcsh_didyoumean = "http://id.loc.gov/authorities/subjects/didyoumean/?label="
+cul_vivo_ORrecon = "http://vivo.cornell.edu/reconcile"
 
 #URI base URLs
 naf_base = "http://id.loc.gov/authorities/names/"

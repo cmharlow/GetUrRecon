@@ -1,9 +1,6 @@
 from argparse import ArgumentParser
-import requests
 from lxml import etree
-import constants
-import json
-import pymarc
+import marc
 
 
 #   1. record type assessment
@@ -19,10 +16,8 @@ if __name__ == "__main__":
     parser = ArgumentParser(usage='%(prog)s [options] data_filename')
     parser.add_argument("-f", "--format", dest="format",
                         help="Enter 1: csv, json, jsonld, mrc, nt, ttl, xml")
-    parser.add_argument("-m", "--match", dest="match", help="match confidence",
-                        default=80)
-    parser.add_argument("-q", "--queryField", dest="queryField",
-                        help="field to be matched")
+    parser.add_argument("-m", "--match", dest="match",
+                        help="match confidence", default=80)
     parser.add_argument("-r", "--record", dest="record",
                         help="record delimiter")
     parser.add_argument("-s", "--sparql", dest="sparql",
@@ -34,7 +29,6 @@ if __name__ == "__main__":
     parser.add_argument("datafile", help="metadata file to be matched")
 
     args = parser.parse_args()
-    print(args.datafile)
 
     if args.datafile and args.queryType == 'PersonalName':
         if args.format == 'csv':
@@ -44,12 +38,7 @@ if __name__ == "__main__":
         elif args.format == 'jsonld':
             print('jsonld')
         elif args.format == 'mrc':
-            with open(args.dataFile) as data:
-                reader = pymarc.MARCReader(data, to_unicode=True, force_utf8=True)
-                for record in reader:
-                    rec = MARC(record, args)
-                    recordID = rec['001']
-                    print(recordID)
+            matches = marc.processMarc(args.datafile, args)
         elif args.format == 'nt':
             print('nt')
         elif args.format == 'ttl':
@@ -57,7 +46,5 @@ if __name__ == "__main__":
         elif args.format == 'xml':
             for event, elem in etree.iterparse(args.datafile):
                 if elem.tag == args.record:
-                    r = XMLRecord(elem)
                     for entity in elem.iter(args.queryField):
-                        reso = r.buildReso()
-                        #external calls
+                        print(entity)
