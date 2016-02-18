@@ -38,7 +38,8 @@ if __name__ == "__main__":
         elif args.format == 'jsonld':
             print('jsonld')
         elif args.format == 'mrc':
-            matches = marc.processMarc(args.datafile, args)
+            fields = ['100', '600', '700']
+            matches = marc.processMarc(args.datafile, args, fields)
         elif args.format == 'nt':
             print('nt')
         elif args.format == 'ttl':
