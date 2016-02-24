@@ -38,6 +38,15 @@ def handle0(subfield0):
                   'fast_prefLabel': fast_prefLabel,
                   'fast_score': fast_score})
         viaf0 = FASTqueryout['viaf']
+    elif re.match(constants.gnd_re, subfield0):
+        gnd = subfield0
+        #Ask WikiData if there is match for that FAST
+        GNDqueryout = querying.sparqlGNDid(gnd)
+        wikidata0 = GNDqueryout['wikidata']
+        lc0 = GNDqueryout['lc']
+        getty0 = GNDqueryout['getty']
+        fast0 = GNDqueryout['fast']
+        viaf0 = GNDqueryout['viaf']
     else:
         lc0 = {}
         getty0 = {}
@@ -84,7 +93,7 @@ def processMarc(datafile, args, fields):
                 #If has something to not make a personal name, skip
                 if not name['t'] and not name['v'] and not name['x']:
                     query = name.format_field()
-                    query_norm = name['a']
+                    query_norm = name['a'].strip('').strip(',')
                     if "," in query_norm and name.indicator1 == '1':
                         lastname = query_norm.split(', ', 1)[0]
                         firstname = query_norm.split(', ', 1)[1]

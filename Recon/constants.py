@@ -13,8 +13,9 @@ MARCXML = '{%(marcxml)s}' % ns
 
 #identifier patterns
 naf_re = re.compile('n\d+')
-fast_re = re.compile('fst\d+')
+fast_re = re.compile('\(OCoLC\)fst\d+')
 lcsh_re = re.compile('sh\d+')
+gnd_re = re.compile('\(DE-588\)\d+-\d+')
 
 #search base URLs
 wikidata_sparql = "https://query.wikidata.org/sparql"
