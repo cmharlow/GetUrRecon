@@ -26,7 +26,8 @@ def handle0(subfield0):
     #FAST-flavored identifiers parsed, searched
     elif re.match(constants.fast_re, subfield0):
         fast = subfield0
-        fast_uri = constants.fast_base + fast.replace('fst', '')
+        fast_uri = constants.fast_base + fast.replace('(OCoLC)fst', '').lstrip('0')
+        print('FAST URI FOUND:' + fast_uri)
         fast_prefLabel = querying.getFASTprefLabel(fast_uri)
         fast_score = 100
         #Ask WikiData if there is match for that FAST
@@ -60,7 +61,6 @@ def handle0(subfield0):
     out['getty'] = [getty0]
     out['fast'] = [fast0]
     return(out)
-    logging.debug(out)
 
 
 def processMarc(datafile, args, fields):
@@ -94,6 +94,7 @@ def processMarc(datafile, args, fields):
                 if not name['t'] and not name['v'] and not name['x']:
                     query = name.format_field()
                     query_norm = name['a'].strip('').strip(',')
+                    query_norm = query_norm.strip('.')
                     if "," in query_norm and name.indicator1 == '1':
                         lastname = query_norm.split(', ', 1)[0]
                         firstname = query_norm.split(', ', 1)[1]
@@ -166,8 +167,10 @@ def processMarc(datafile, args, fields):
                         resp['matches']['fast'].append(id_resp['fast'])
                         resp['matches']['getty'].append(id_resp['getty'])
                         resp['matches']['wikidata'].append(id_resp['wikidata'])
-                        if id_resp['wikidata'] is not None:
+                        if id_resp['wikidata'][0]['wikidata_uri']:
                             recon_resp = True
+                            name.add_subfield('0', id_resp['wikidata'][0]
+                                              ['wikidata_uri'])
 
                     #If name does not have $0 but has $d, $q, $b, $c
                     #Then run against NAF first for id checking
@@ -190,8 +193,12 @@ def processMarc(datafile, args, fields):
                             resp['matches']['getty'].append(LCqueryout['getty'])
                             resp['matches']['fast'].append(LCqueryout['fast'])
                             resp['matches']['viaf'].append(LCqueryout['viaf'])
-                            if resp['matches']['wikidata'] is not None:
-                                recon_resp = True
+                            if len(resp['matches']['wikidata']) > 0:
+                                if resp['matches']['wikidata'][0]['wikidata_uri']:
+                                    recon_resp = True
+                                    name.add_subfield('0', resp['matches']
+                                                      ['wikidata'][0]
+                                                      ['wikidata_uri'])
 
                     if recon_resp is False:
                         #wikidata sparql query with query_inv
@@ -202,6 +209,11 @@ def processMarc(datafile, args, fields):
                             resp['matches']['viaf'] = WDqueryout['viaf']
                             resp['matches']['fast'] = WDqueryout['fast']
                             resp['matches']['getty'] = WDqueryout['getty']
+                            if len(resp['matches']['wikidata']) > 0:
+                                if resp['matches']['wikidata'][0]['wikidata_uri']:
+                                    name.add_subfield('0', resp['matches']
+                                                      ['wikidata'][0]
+                                                      ['wikidata_uri'])
                         else:
                             WDqueryout = querying.sparqlWD(query_norm, resp)
                             resp['matches']['wikidata'] = WDqueryout['wikidata']
@@ -209,6 +221,15 @@ def processMarc(datafile, args, fields):
                             resp['matches']['viaf'] = WDqueryout['viaf']
                             resp['matches']['fast'] = WDqueryout['fast']
                             resp['matches']['getty'] = WDqueryout['getty']
+                            if len(resp['matches']['wikidata']) > 0:
+                                if resp['matches']['wikidata'][0]['wikidata_uri']:
+                                    name.add_subfield('0', resp['matches']
+                                                      ['wikidata'][0]
+                                                      ['wikidata_uri'])
+
                 response[recordID + '_' + query_norm] = resp
+            filename = 'test/output/' + recordID.strip() + '.mrc'
+            out = open(filename, 'wb')
+            out.write(record.as_marc())
+            out.close()
     return(response)
-                #If name does not have $0 but has $d, $q, $b, $c

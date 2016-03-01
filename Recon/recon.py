@@ -41,7 +41,7 @@ if __name__ == "__main__":
         elif args.format == 'mrc':
             fields = ['100', '600', '700']
             matches = marc.processMarc(args.datafile, args, fields)
-            with open('../test/response.json', 'w') as fp:
+            with open('test/response.json', 'w') as fp:
                 json.dump(matches, fp)
         elif args.format == 'nt':
             print('nt')

@@ -23,7 +23,8 @@ def getLCprefLabel(lcuri):
 def getFASTprefLabel(fasturi):
     if fasturi is not None:
         try:
-            graph = rdflib.Graph().parse(fasturi + "/rdf", format='xml')
+            print(fasturi)
+            graph = rdflib.Graph().parse(fasturi)
             fast_labeltriple = graph.preferredLabel(rdflib.URIRef(fasturi))
             fast_preflabel = fast_labeltriple[0][1].toPython()
             return fast_preflabel
@@ -86,6 +87,7 @@ def LCsuggest(query, role_code, role):
 
 
 def sparqlWD(label, resp):
+    print('HITTING LABEL: ' + label)
     sparql = SPARQLWrapper(constants.wikidata_sparql)
     sparql.setQuery("""
         PREFIX wikibase: <http://wikiba.se/ontology#>
@@ -94,17 +96,19 @@ def sparqlWD(label, resp):
         PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
         SELECT ?uri ?ulan ?viaf ?fast ?bdate ?ddate ?role WHERE {
             ?uri ?label """ + '"' + unidecode.unidecode(label) + '"' + """ .
-            ?uri wdt:P245 ?ulan .
-            ?uri wdt:P214 ?viaf .
-            ?uri wdt:P2163 ?fast .
-            ?uri wdt:P569 ?bdate .
-            ?uri wdt:P570 ?ddate .
-            ?uri wdt:P106 ?roleuri .
-            ?roleuri rdfs:label ?role filter (lang(?role) = "en") .
-        }
+            OPTIONAL { ?uri wdt:P245 ?ulan . }
+            OPTIONAL { ?uri wdt:P214 ?viaf . }
+            OPTIONAL { ?uri wdt:P2163 ?fast . }
+            OPTIONAL { ?uri wdt:P569 ?bdate . }
+            OPTIONAL { ?uri wdt:P570 ?ddate . }
+            OPTIONAL { ?uri wdt:P106 ?roleuri . }
+            OPTIONAL { ?roleuri rdfs:label ?role . }
+            FILTER NOT EXISTS { ?uri a wikibase:BestRank . }
+        } LIMIT 10
     """)
     sparql.setReturnFormat(JSON)
     res = sparql.query().convert()
+    print(res)
     out = {}
     #If there is WikiData match:
     if len(res['results']['bindings']) > 0:
@@ -137,7 +141,7 @@ def sparqlWD(label, resp):
                 wikidata_score = 80
             elif resp['match_fields']['role'] == wikidata_role:
                 wikidata_score = 70
-            elif fuzz.ratio(resp['match_fields']['role'], wikidata_role) > 60:
+            elif resp['match_fields']['role'] and fuzz.ratio(resp['match_fields']['role'], wikidata_role) > 60:
                 wikidata_score = 60
             else:
                 wikidata_score = 50
@@ -195,7 +199,7 @@ def sparqlWD(label, resp):
             fast0['fast_score'] = fast_score
             fast0['fast_prefLabel'] = getFASTprefLabel(fast_uri)
             out['fast'].append(fast0)
-            return out
+        return out
     else:
         out['wikidata'] = []
         out['getty'] = []
@@ -214,9 +218,9 @@ def sparqlLCid(LCid):
         PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
         SELECT ?uri ?ulan ?viaf ?fast ?prefLabel WHERE {
             ?uri wdt:P244 '""" + LCid + """' .
-            ?uri wdt:P245 ?ulan .
-            ?uri wdt:P214 ?viaf .
-            ?uri wdt:P2163 ?fast .
+            OPTIONAL { ?uri wdt:P245 ?ulan . }
+            OPTIONAL { ?uri wdt:P214 ?viaf . }
+            OPTIONAL { ?uri wdt:P2163 ?fast . }
             SERVICE wikibase:label {
             bd:serviceParam wikibase:language "en" .
             ?uri rdfs:label ?prefLabel .
@@ -238,18 +242,21 @@ def sparqlLCid(LCid):
             getty_score = 100
         except:
             ulan_uri = None
+            getty_score = 0
         try:
             viaf_uri = (constants.viaf_base + res['results']['bindings'][0]
                         ['viaf']['value'])
             viaf_score = 100
         except:
             viaf_uri = None
+            viaf_score = 0
         try:
             fast_uri = (constants.fast_base + res['results']['bindings'][0]
                         ['fast']['value'])
             fast_score = 100
         except:
             fast_uri = None
+            fast_score = 0
     else:
         wikidata_uri = wikidata_prefLabel = ulan_uri = viaf_uri = fast_uri = None
         getty_score = viaf_score = fast_score = wikidata_score = 0
@@ -281,10 +288,10 @@ def sparqlGNDid(GNDid):
         PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
         SELECT ?uri ?ulan ?viaf ?fast ?prefLabel ?naf WHERE {
             ?uri wdt:p227 '""" + GNDid.replace('(DE-588)', '').replace('-', '') + """'
-            ?uri wdt:P244 ?naf .
-            ?uri wdt:P245 ?ulan .
-            ?uri wdt:P214 ?viaf .
-            ?uri wdt:P2163 ?fast .
+            OPTIONAL { ?uri wdt:P244 ?naf . }
+            OPTIONAL { ?uri wdt:P245 ?ulan . }
+            OPTIONAL { ?uri wdt:P214 ?viaf . }
+            OPTIONAL { ?uri wdt:P2163 ?fast . }
             SERVICE wikibase:label {
             bd:serviceParam wikibase:language "en" .
             ?uri rdfs:label ?prefLabel .
@@ -351,6 +358,8 @@ def sparqlGNDid(GNDid):
 
 
 def sparqlFASTid(FASTid):
+    FASTid = FASTid.lstrip('(OCoLC)fst').lstrip('0')
+    print('SPARQL Query id: ' + FASTid)
     sparql = SPARQLWrapper(constants.wikidata_sparql)
     sparql.setQuery("""
         PREFIX wikibase: <http://wikiba.se/ontology#>
@@ -358,10 +367,10 @@ def sparqlFASTid(FASTid):
         PREFIX wdt: <http://www.wikidata.org/prop/direct/>
         PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
         SELECT ?uri ?ulan ?viaf ?naf ?prefLabel WHERE {
-            ?uri wdt:P2163 '""" + FASTid.replace('(OCoLC)fst', '') + """' .
-            ?uri wdt:P245 ?ulan .
-            ?uri wdt:P214 ?viaf .
-            ?uri wdt:P244 ?naf .
+            ?uri wdt:P2163 '""" + FASTid + """' .
+            OPTIONAL { ?uri wdt:P245 ?ulan . }
+            OPTIONAL { ?uri wdt:P214 ?viaf . }
+            OPTIONAL { ?uri wdt:P244 ?naf . }
             SERVICE wikibase:label {
             bd:serviceParam wikibase:language "en" .
             ?uri rdfs:label ?prefLabel .
@@ -370,6 +379,7 @@ def sparqlFASTid(FASTid):
     """)
     sparql.setReturnFormat(JSON)
     res = sparql.query().convert()
+    print(res)
     out = {}
     print(res)
     #If there is WikiData match:
@@ -401,15 +411,20 @@ def sparqlFASTid(FASTid):
             lc_score = 0
     else:
         wikidata_uri = wikidata_prefLabel = ulan_uri = viaf_uri = lc_uri = None
+        wikidata_score = getty_score = viaf_score = lc_score = 0
+    out['wikidata'] = {}
     out['wikidata']['wikidata_uri'] = wikidata_uri
     out['wikidata']['wikidata_prefLabel'] = wikidata_prefLabel
     out['wikidata']['wikidata_score'] = wikidata_score
+    out['getty'] = {}
     out['getty']['ulan_uri'] = ulan_uri
     out['getty']['ulan_prefLabel'] = None
     out['getty']['getty_score'] = getty_score
+    out['viaf'] = {}
     out['viaf']['viaf_uri'] = viaf_uri
     out['viaf']['viaf_score'] = viaf_score
     out['viaf']['viaf_prefLabel'] = None
+    out['lc'] = {}
     out['lc']['lc_uri'] = lc_uri
     out['lc']['lc_score'] = lc_score
     out['lc']['lc_prefLabel'] = None
