@@ -371,6 +371,7 @@ def sparqlFASTid(FASTid):
     sparql.setReturnFormat(JSON)
     res = sparql.query().convert()
     out = {}
+    print(res)
     #If there is WikiData match:
     if len(res['results']['bindings']) > 0:
         wikidata_uri = (res['results']['bindings'][0]['uri']['value'])

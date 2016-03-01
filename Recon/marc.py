@@ -160,6 +160,7 @@ def processMarc(datafile, args, fields):
                     recon_resp = False
                     if field_id and recon_resp is False:
                         id_resp = handle0(field_id)
+                        print(id_resp)
                         resp['matches']['lc'].append(id_resp['lc'])
                         resp['matches']['viaf'].append(id_resp['viaf'])
                         resp['matches']['fast'].append(id_resp['fast'])
